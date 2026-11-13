@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Place Value Chart — White Rose Style</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar for horizontal overflow on small screens */
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    /* Pop-in animation for added manipulatives */
+    @keyframes popIn {
+      0% {
+        transform: scale(0.35);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .animate-pop-in {
+      animation: popIn 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    /* Subtle pulse for Exchange Up badge */
+    @keyframes gentleBounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-2px);
+      }
+    }
+
+    .animate-gentle-bounce {
+      animation: gentleBounce 1.4s infinite ease-in-out;
+    }
+
+    /* Tactile Place Value Counter styling */
+    .pv-counter {
+      width: 44px;
+      height: 44px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #ffffff;
+      border: 2.5px solid rgba(255, 255, 255, 0.92);
+      box-shadow:
+        0 3px 6px rgba(15, 23, 42, 0.18),
+        inset 0 2px 3px rgba(255, 255, 255, 0.45),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.18);
+      cursor: pointer;
+      transition: transform 0.14s ease, box-shadow 0.14s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .pv-counter:hover {
+      transform: scale(1.1);
+      box-shadow:
+        0 6px 12px rgba(15, 23, 42, 0.24),
+        inset 0 2px 3px rgba(255, 255, 255, 0.55),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+    }
+
+    .pv-counter:active {
+      transform: scale(0.94);
+    }
+
+    /* Inner ring on counter for authentic classroom manipulative feel */
+    .pv-counter::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 9999px;
+      border: 1px dashed rgba(255, 255, 255, 0.45);
+      pointer-events: none;
+    }
+
+    /* Base 10 Item Wrapper */
+    .b10-item {
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .b10-item:hover {
+      transform: scale(1.06);
+      filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.18));
+      z-index: 10;
+    }
+
+    .b10-item:active {
+      transform: scale(0.95);
+    }
+
+    /* Drag-over column highlight */
+    .column-drag-over {
+      background-color: #f8fafc !important;
+      box-shadow: inset 0 0 0 3px #3b82f6 !important;
+    }
+
+    /* Trash bin active state */
+    .trash-drag-over {
+      background-color: #fee2e2 !important;
+      border-color: #ef4444 !important;
+      color: #dc2626 !important;
+      transform: scale(1.05);
+    }
+
+    /* Flying particle during exchange animation */
+    .exchange-flyer {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.42s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION & CONTROL BAR -->
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand / Title -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 via-amber-500 to-sky-500 flex items-center justify-center text-white font-black text-lg shadow-sm">
+          PV
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight leading-tight">
+            Place Value Chart
+          </h1>
+          <p class="text-[11px] font-medium text-slate-500 hidden sm:block">
+            Interactive Maths Manipulatives
+          </p>
+        </div>
+      </div>
+
+      <!-- Center Controls: Manipulative Mode & Column Preset -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        
+        <!-- Mode Toggle: Counters vs Base-10 -->
+        <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center" role="group" aria-label="Manipulative Mode">
+          <button
+            id="btnModeCounters"
+            onclick="setMode('counters')"
+            class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 bg-white text-slate-800 shadow-sm"
+          >
+            <span class="w-3.5 h-3.5 rounded-full bg-rose-500 border border-white shadow-inner inline-block"></span>
+            Counters
+          </button>
+          <button
+            id="btnModeBase10"
+            onclick="setMode('base10')"
+            class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
+          >
+            <svg class="w-3.5 h-3.5 text-amber-500" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="2" y="2" width="12" height="12" rx="1.5" />
+            </svg>
+            Base 10
+          </button>
+        </div>
+
+        <!-- Column Layout Preset Dropdown -->
+        <div class="flex items-center gap-1.5">
+          <label for="presetSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:inline">
+            Columns:
+          </label>
+          <select
+            id="presetSelect"
+            onchange="setPreset(this.value)"
+            class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs sm:text-sm font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer transition"
+          >
+            <option value="H_T_O">H | T | O (Hundreds to Ones)</option>
+            <option value="Th_H_T_O" selected>Th | H | T | O (Thousands to Ones)</option>
+            <option value="M_to_O">M | HTh | TTh | Th | H | T | O (Millions)</option>
+            <option value="H_to_th">H | T | O . t | h | th (Decimals)</option>
+            <option value="O_to_th">O . t | h | th (Ones to Thousandths)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Right Actions: Random, Sound, Undo, Clear -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button
+          onclick="generateRandomNumber()"
+          title="Generate a random number"
+          class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 border border-indigo-200 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+          </svg>
+          <span>Random</span>
+        </button>
+
+        <button
+          id="btnUndo"
+          onclick="undoLastAction()"
+          disabled
+          title="Undo last change"
+          class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:pointer-events-none text-slate-700 border border-slate-200 transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+          </svg>
+        </button>
+
+        <button
+          id="btnSound"
+          onclick="toggleSound()"
+          title="Toggle sound effects"
+          class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition"
+        >
+          <!-- Sound On Icon -->
+          <svg id="iconSoundOn" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+          </svg>
+          <!-- Sound Off Icon -->
+          <svg id="iconSoundOff" class="w-4 h-4 hidden text-slate-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+          </svg>
+        </button>
+
+        <button
+          onclick="clearBoard()"
+          title="Clear all columns"
+          class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+          <span>Clear</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SUB-BAR: LIVE TOTAL, PARTITIONING & INFO BANNER -->
+    <div class="bg-slate-50 border-t border-slate-200/80 px-3 sm:px-6 py-2">
+      <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+        
+        <!-- Total Readout Card -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button
+            id="btnToggleTotal"
+            onclick="toggleShowTotal()"
+            class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition"
+            title="Show or hide the numerical total"
+          >
+            <svg id="iconEyeOpen" class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <svg id="iconEyeClosed" class="w-4 h-4 text-slate-400 hidden" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+            </svg>
+            <span id="labelToggleTotal">Hide Total</span>
+          </button>
+
+          <div class="flex items-center gap-2 bg-white px-3.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total:</span>
+            <span id="totalDisplay" class="text-lg sm:text-xl font-black text-slate-800 tracking-tight tabular-nums">
+              0
+            </span>
+          </div>
+
+          <!-- Expanded Form / Partitioning Toggle -->
+          <button
+            id="btnToggleExpanded"
+            onclick="toggleExpandedForm()"
+            class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-600 text-xs font-bold transition"
+          >
+            + Partitioning
+          </button>
+
+          <div
+            id="expandedFormContainer"
+            class="hidden items-center bg-amber-50/90 border border-amber-200 px-3 py-1 rounded-xl text-xs sm:text-sm font-bold text-amber-900 tabular-nums"
+          >
+            <span id="expandedFormText">0</span>
+          </div>
+        </div>
+
+        <!-- Helper Hint / Base-10 Note -->
+        <div id="helperMessage" class="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Click inside any column or drag manipulatives from the tray below. Click an item to remove it.</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE: PLACE VALUE CHART -->
+  <main class="flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 gap-4">
+    
+    <!-- Scrollable Chart Wrapper -->
+    <div class="flex-1 flex flex-col min-h-[420px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+      <div id="chartGrid" class="flex-1 flex flex-row min-w-full divide-x divide-slate-200">
+        <!-- Columns dynamically rendered here -->
+      </div>
+    </div>
+
+    <!-- BOTTOM MANIPULATIVE TRAY & TRASH DROPZONE -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      
+      <div class="flex items-center gap-2 self-start sm:self-center">
+        <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+          Drag or Click to Add:
+        </span>
+      </div>
+
+      <!-- Draggable Palette Items -->
+      <div id="manipulativeTray" class="flex flex-wrap items-center justify-center gap-3 sm:gap-5 flex-1">
+        <!-- Tray items dynamically rendered here -->
+      </div>
+
+      <!-- Drag-to-Delete Trash Zone -->
+      <div
+        id="trashDropZone"
+        ondragover="handleTrashDragOver(event)"
+        ondragleave="handleTrashDragLeave(event)"
+        ondrop="handleTrashDrop(event)"
+        class="px-4 py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 flex items-center gap-2 text-xs font-bold transition-all shrink-0"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+        </svg>
+        <span>Drag here to delete</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Notification Banner -->
+  <div
+    id="toastBanner"
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50"
+  >
+    Notification
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * PLACE VALUE COLUMN DEFINITIONS & COLOR PALETTE (White Rose Maths Inspired)
+     * ============================================================================
+     */
+    const COLUMN_DEFS = {
+      M: {
+        id: 'M',
+        short: 'M',
+        name: 'Millions',
+        label: '1,000,000',
+        multiplier: 1000000,
+        exponent: 6,
+        headerBg: 'bg-teal-600',
+        softBg: 'bg-teal-50/40',
+        badgeBg: 'bg-teal-100 text-teal-800 border-teal-300',
+        counterGradient: 'linear-gradient(145deg, #14b8a6, #0f766e)',
+        base10Supported: false
+      },
+      HTh: {
+        id: 'HTh',
+        short: 'HTh',
+        name: 'Hundred Thousands',
+        label: '100,000',
+        multiplier: 100000,
+        exponent: 5,
+        headerBg: 'bg-purple-600',
+        softBg: 'bg-purple-50/40',
+        badgeBg: 'bg-purple-100 text-purple-800 border-purple-300',
+        counterGradient: 'linear-gradient(145deg, #a855f7, #7e22ce)',
+        base10Supported: false
+      },
+      TTh: {
+        id: 'TTh',
+        short: 'TTh',
+        name: 'Ten Thousands',
+        label: '10,000',
+        multiplier: 10000,
+        exponent: 4,
+        headerBg: 'bg-pink-600',
+        softBg: 'bg-pink-50/40',
+        badgeBg: 'bg-pink-100 text-pink-800 border-pink-300',
+        counterGradient: 'linear-gradient(145deg, #ec4899, #be185d)',
+        base10Supported: false
+      },
+      Th: {
+        id: 'Th',
+        short: 'Th',
+        name: 'Thousands',
+        label: '1000',
+        multiplier: 1000,
+        exponent: 3,
+        headerBg: 'bg-orange-500',
+        softBg: 'bg-orange-50/40',
+        badgeBg: 'bg-orange-100 text-orange-800 border-orange-300',
+        counterGradient: 'linear-gradient(145deg, #f97316, #c2410c)',
+        base10Supported: true
+      },
+      H: {
+        id: 'H',
+        short: 'H',
+        name: 'Hundreds',
+        label: '100',
+        multiplier: 100,
+        exponent: 2,
+        headerBg: 'bg-rose-500',
+        softBg: 'bg-rose-50/40',
+        badgeBg: 'bg-rose-100 text-rose-800 border-rose-300',
+        counterGradient: 'linear-gradient(145deg, #f43f5e, #be123c)',
+        base10Supported: true
+      },
+      T: {
+        id: 'T',
+        short: 'T',
+        name: 'Tens',
+        label: '10',
+        multiplier: 10,
+        exponent: 1,
+        headerBg: 'bg-emerald-500',
+        softBg: 'bg-emerald-50/40',
+        badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        counterGradient: 'linear-gradient(145deg, #10b981, #047857)',
+        base10Supported: true
+      },
+      O: {
+        id: 'O',
+        short: 'O',
+        name: 'Ones',
+        label: '1',
+        multiplier: 1,
+        exponent: 0,
+        headerBg: 'bg-sky-500',
+        softBg: 'bg-sky-50/40',
+        badgeBg: 'bg-sky-100 text-sky-800 border-sky-300',
+        counterGradient: 'linear-gradient(145deg, #0ea5e9, #0369a1)',
+        base10Supported: true
+      },
+      t: {
+        id: 't',
+        short: 't',
+        name: 'Tenths',
+        label: '0.1',
+        multiplier: 0.1,
+        exponent: -1,
+        headerBg: 'bg-amber-500',
+        softBg: 'bg-amber-50/40',
+        badgeBg: 'bg-amber-100 text-amber-800 border-amber-300',
+        counterGradient: 'linear-gradient(145deg, #f59e0b, #b45309)',
+        base10Supported: false
+      },
+      h: {
+        id: 'h',
+        short: 'h',
+        name: 'Hundredths',
+        label: '0.01',
+        multiplier: 0.01,
+        exponent: -2,
+        headerBg: 'bg-violet-500',
+        softBg: 'bg-violet-50/40',
+        badgeBg: 'bg-violet-100 text-violet-800 border-violet-300',
+        counterGradient: 'linear-gradient(145deg, #8b5cf6, #5b21b6)',
+        base10Supported: false
+      },
+      th: {
+        id: 'th',
+        short: 'th',
+        name: 'Thousandths',
+        label: '0.001',
+        multiplier: 0.001,
+        exponent: -3,
+        headerBg: 'bg-fuchsia-600',
+        softBg: 'bg-fuchsia-50/40',
+        badgeBg: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300',
+        counterGradient: 'linear-gradient(145deg, #d946ef, #86198f)',
+        base10Supported: false
+      }
+    };
+
+    const PRESETS = {
+      H_T_O: ['H', 'T', 'O'],
+      Th_H_T_O: ['Th', 'H', 'T', 'O'],
+      M_to_O: ['M', 'HTh', 'TTh', 'Th', 'H', 'T', 'O'],
+      H_to_th: ['H', 'T', 'O', 't', 'h', 'th'],
+      O_to_th: ['O', 't', 'h', 'th']
+    };
+
+    const MAX_ITEMS_PER_COL = 25;
+
+    /**
+     * ============================================================================
+     * APPLICATION STATE
+     * ============================================================================
+     */
+    const state = {
+      mode: 'counters', // 'counters' | 'base10'
+      preset: 'Th_H_T_O',
+      columns: ['Th', 'H', 'T', 'O'],
+      counts: {
+        M: 0, HTh: 0, TTh: 0, Th: 1, H: 2, T: 4, O: 5, t: 0, h: 0, th: 0
+      },
+      showTotal: true,
+      showExpanded: false,
+      soundEnabled: true,
+      history: [] // Stack of count snapshots for Undo
+    };
+
+    /**
+     * ============================================================================
+     * WEB AUDIO API SOUND SYNTHESIZER (No external sound URLs)
+     * ============================================================================
+     */
+    let audioCtx = null;
+
+    function playSound(type) {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'add') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.08);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'remove') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(480, now);
+          osc.frequency.exponentialRampToValueAtTime(260, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'exchange') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(760, now + 0.24);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+          osc.start(now);
+          osc.stop(now + 0.26);
+        } else if (type === 'clear') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.16);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+          osc.start(now);
+          osc.stop(now + 0.17);
+        }
+      } catch (e) {
+        // Ignore audio errors if blocked by browser autoplay policy
+      }
+    }
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      document.getElementById('iconSoundOn').classList.toggle('hidden', !state.soundEnabled);
+      document.getElementById('iconSoundOff').classList.toggle('hidden', state.soundEnabled);
+      if (state.soundEnabled) playSound('add');
+    }
+
+    /**
+     * ============================================================================
+     * CUSTOM SVG GENERATORS FOR BASE-10 (DIENES) BLOCKS
+     * ============================================================================
+     */
+    function getBase10SVG(colId, isTray = false) {
+      const scale = isTray ? 0.85 : 1;
+
+      if (colId === 'O') {
+        // Single Unit Cube (1) - Sky Blue 3D Isometric/Beveled Cube
+        return `
+          <svg width="${26 * scale}" height="${26 * scale}" viewBox="0 0 28 28" class="overflow-visible">
+            <!-- Top face -->
+            <polygon points="14,2 25,8 14,14 3,8" fill="#7dd3fc" stroke="#0369a1" stroke-width="1.3" stroke-linejoin="round"/>
+            <!-- Left face -->
+            <polygon points="3,8 14,14 14,26 3,20" fill="#0ea5e9" stroke="#0369a1" stroke-width="1.3" stroke-linejoin="round"/>
+            <!-- Right face -->
+            <polygon points="14,14 25,8 25,20 14,26" fill="#0284c7" stroke="#0369a1" stroke-width="1.3" stroke-linejoin="round"/>
+          </svg>
+        `;
+      }
+
+      if (colId === 'T') {
+        // Ten Rod (10) - Emerald Green vertical rod with 10 distinct segments
+        const h = isTray ? 64 : 112;
+        const w = isTray ? 16 : 20;
+        let lines = '';
+        for (let i = 1; i < 10; i++) {
+          const y = i * 10;
+          lines += `<line x1="0" y1="${y}" x2="14" y2="${y}" stroke="#065f46" stroke-width="0.9"/>`;
+          lines += `<line x1="14" y1="${y}" x2="18" y2="${y - 3}" stroke="#065f46" stroke-width="0.9"/>`;
+        }
+        return `
+          <svg width="${w}" height="${h}" viewBox="0 0 20 105" class="overflow-visible">
+            <!-- Top 3D bevel -->
+            <polygon points="0,4 4,0 18,0 14,4" fill="#6ee7b7" stroke="#065f46" stroke-width="1.1" stroke-linejoin="round"/>
+            <!-- Side 3D bevel -->
+            <polygon points="14,4 18,0 18,100 14,104" fill="#059669" stroke="#065f46" stroke-width="1.1" stroke-linejoin="round"/>
+            <!-- Front segmented face -->
+            <rect x="0" y="4" width="14" height="100" fill="#10b981" stroke="#065f46" stroke-width="1.1"/>
+            <g transform="translate(0, 4)">
+              ${lines}
+            </g>
+          </svg>
+        `;
+      }
+
+      if (colId === 'H') {
+        // Hundred Flat (100) - Coral/Rose 10x10 grid square with subtle 3D depth
+        const size = isTray ? 56 : 86;
+        let gridLines = '';
+        for (let i = 1; i < 10; i++) {
+          const pos = i * 8;
+          gridLines += `<line x1="${pos}" y1="0" x2="${pos}" y2="80" stroke="#9f1239" stroke-width="0.65"/>`;
+          gridLines += `<line x1="0" y1="${pos}" x2="80" y2="${pos}" stroke="#9f1239" stroke-width="0.65"/>`;
+        }
+        return `
+          <svg width="${size}" height="${size}" viewBox="0 0 88 88" class="overflow-visible">
+            <!-- Top 3D edge -->
+            <polygon points="2,6 7,1 87,1 82,6" fill="#fda4af" stroke="#9f1239" stroke-width="1.1" stroke-linejoin="round"/>
+            <!-- Right 3D edge -->
+            <polygon points="82,6 87,1 87,81 82,86" fill="#e11d48" stroke="#9f1239" stroke-width="1.1" stroke-linejoin="round"/>
+            <!-- Front 10x10 face -->
+            <rect x="2" y="6" width="80" height="80" fill="#f43f5e" stroke="#9f1239" stroke-width="1.2"/>
+            <g transform="translate(2, 6)">
+              ${gridLines}
+            </g>
+          </svg>
+        `;
+      }
+
+      if (colId === 'Th') {
+        // Thousand Cube (1000) - Orange 3D Isometric 10x10x10 Cube
+        const size = isTray ? 62 : 96;
+        let topLines = '';
+        let leftLines = '';
+        let rightLines = '';
+
+        // Draw 10x10 grid lines across all 3 visible faces of the isometric cube
+        // Center vertex = (50, 52), Top = (50, 6), Left = (10, 29), Right = (90, 29)
+        // Bottom = (50, 98), BottomLeft = (10, 75), BottomRight = (90, 75)
+        for (let i = 1; i < 10; i++) {
+          const t = i / 10;
+          // Top face lines
+          const tx1 = 50 - 40 * t, ty1 = 6 + 23 * t;
+          const tx2 = 90 - 40 * t, ty2 = 29 + 23 * t;
+          topLines += `<line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+
+          const tx3 = 50 + 40 * t, ty3 = 6 + 23 * t;
+          const tx4 = 10 + 40 * t, ty4 = 29 + 23 * t;
+          topLines += `<line x1="${tx3}" y1="${ty3}" x2="${tx4}" y2="${ty4}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+
+          // Left face vertical & diagonal lines
+          const lx = 10 + 40 * t, lyTop = 29 + 23 * t;
+          leftLines += `<line x1="${lx}" y1="${lyTop}" x2="${lx}" y2="${lyTop + 46}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+          const lyHoriz = 29 + 46 * t;
+          leftLines += `<line x1="10" y1="${lyHoriz}" x2="50" y2="${lyHoriz + 23}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+
+          // Right face vertical & diagonal lines
+          const rx = 50 + 40 * t, ryTop = 52 - 23 * t;
+          rightLines += `<line x1="${rx}" y1="${ryTop}" x2="${rx}" y2="${ryTop + 46}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+          const ryHoriz = 52 + 46 * t;
+          rightLines += `<line x1="50" y1="${ryHoriz}" x2="90" y2="${ryHoriz - 23}" stroke="#9a3412" stroke-width="0.55" opacity="0.7"/>`;
+        }
+
+        return `
+          <svg width="${size}" height="${size}" viewBox="0 0 100 104" class="overflow-visible">
+            <!-- Top Face -->
+            <polygon points="50,6 90,29 50,52 10,29" fill="#fdba74" stroke="#9a3412" stroke-width="1.3" stroke-linejoin="round"/>
+            ${topLines}
+            <!-- Left Face -->
+            <polygon points="10,29 50,52 50,98 10,75" fill="#f97316" stroke="#9a3412" stroke-width="1.3" stroke-linejoin="round"/>
+            ${leftLines}
+            <!-- Right Face -->
+            <polygon points="50,52 90,29 90,75 50,98" fill="#ea580c" stroke="#9a3412" stroke-width="1.3" stroke-linejoin="round"/>
+            ${rightLines}
+          </svg>
+        `;
+      }
+
+      return '';
+    }
+
+    /**
+     * ============================================================================
+     * STATE HISTORY & UNDO
+     * ============================================================================
+     */
+    function saveSnapshot() {
+      state.history.push(JSON.parse(JSON.stringify(state.counts)));
+      if (state.history.length > 30) state.history.shift();
+      document.getElementById('btnUndo').disabled = state.history.length === 0;
+    }
+
+    function undoLastAction() {
+      if (state.history.length === 0) return;
+      state.counts = state.history.pop();
+      document.getElementById('btnUndo').disabled = state.history.length === 0;
+      playSound('remove');
+      renderAll();
+      showToast('Undid last action');
+    }
+
+    /**
+     * ============================================================================
+     * MODE & PRESET SWITCHING
+     * ============================================================================
+     */
+    function setMode(newMode) {
+      if (state.mode === newMode) return;
+      state.mode = newMode;
+
+      const btnCounters = document.getElementById('btnModeCounters');
+      const btnBase10 = document.getElementById('btnModeBase10');
+
+      if (newMode === 'counters') {
+        btnCounters.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 bg-white text-slate-800 shadow-sm';
+        btnBase10.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+      } else {
+        btnBase10.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 bg-white text-slate-800 shadow-sm';
+        btnCounters.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+
+        // If current preset includes columns unsupported by standard Base-10 (like Millions or Thousandths),
+        // switch gracefully to Th | H | T | O so Base-10 blocks shine immediately.
+        const hasUnsupported = state.columns.some(col => !COLUMN_DEFS[col].base10Supported);
+        if (hasUnsupported) {
+          state.preset = 'Th_H_T_O';
+          state.columns = [...PRESETS.Th_H_T_O];
+          document.getElementById('presetSelect').value = 'Th_H_T_O';
+          showToast('Switched to Th | H | T | O for Base-10 Blocks');
+        }
+      }
+
+      playSound('add');
+      renderAll();
+    }
+
+    function setPreset(presetKey) {
+      saveSnapshot();
+      state.preset = presetKey;
+      state.columns = [...PRESETS[presetKey]];
+
+      // Zero out columns not in the active preset so hidden columns don't distort the total
+      Object.keys(state.counts).forEach(k => {
+        if (!state.columns.includes(k)) {
+          state.counts[k] = 0;
+        }
+      });
+
+      // If switching to a preset with Millions/Decimals while in Base-10 mode, automatically switch to Counters
+      const hasUnsupported = state.columns.some(col => !COLUMN_DEFS[col].base10Supported);
+      if (state.mode === 'base10' && hasUnsupported) {
+        state.mode = 'counters';
+        document.getElementById('btnModeCounters').className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 bg-white text-slate-800 shadow-sm';
+        document.getElementById('btnModeBase10').className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+        showToast('Switched to Place Value Counters for this column range');
+      }
+
+      playSound('add');
+      renderAll();
+    }
+
+    /**
+     * ============================================================================
+     * ADDING, REMOVING & EXCHANGING MANIPULATIVES
+     * ============================================================================
+     */
+    function addItem(colId, amount = 1) {
+      if (!state.columns.includes(colId)) return;
+      if (state.counts[colId] + amount > MAX_ITEMS_PER_COL) {
+        showToast(`Maximum ${MAX_ITEMS_PER_COL} items per column — try Exchanging (10 → 1)!`);
+        return;
+      }
+      saveSnapshot();
+      state.counts[colId] += amount;
+      playSound('add');
+      renderAll(colId);
+    }
+
+    function removeItem(colId, amount = 1) {
+      if (state.counts[colId] <= 0) return;
+      saveSnapshot();
+      state.counts[colId] = Math.max(0, state.counts[colId] - amount);
+      playSound('remove');
+      renderAll();
+    }
+
+    /**
+     * Exchange Up: 10 items in `colId` combine into 1 item in the column to the left
+     */
+    function exchangeUp(colId) {
+      const colIndex = state.columns.indexOf(colId);
+      if (colIndex <= 0) return; // No column to the left
+      if (state.counts[colId] < 10) return;
+
+      const targetColId = state.columns[colIndex - 1];
+      if (state.counts[targetColId] + 1 > MAX_ITEMS_PER_COL) {
+        showToast('Target column is full!');
+        return;
+      }
+
+      saveSnapshot();
+      animateExchange(colId, targetColId, () => {
+        state.counts[colId] -= 10;
+        state.counts[targetColId] += 1;
+        playSound('exchange');
+        renderAll(targetColId);
+        showToast(`Exchanged 10 ${COLUMN_DEFS[colId].name} for 1 ${COLUMN_DEFS[targetColId].name}`);
+      });
+    }
+
+    /**
+     * Break Apart / Exchange Down: 1 item in `colId` decomposes into 10 items in the column to the right
+     */
+    function exchangeDown(colId) {
+      const colIndex = state.columns.indexOf(colId);
+      if (colIndex === -1 || colIndex >= state.columns.length - 1) return; // No column to the right
+      if (state.counts[colId] < 1) return;
+
+      const targetColId = state.columns[colIndex + 1];
+      if (state.counts[targetColId] + 10 > MAX_ITEMS_PER_COL) {
+        showToast(`Not enough space in ${COLUMN_DEFS[targetColId].name} (max ${MAX_ITEMS_PER_COL})`);
+        return;
+      }
+
+      saveSnapshot();
+      animateExchange(colId, targetColId, () => {
+        state.counts[colId] -= 1;
+        state.counts[targetColId] += 10;
+        playSound('exchange');
+        renderAll(targetColId);
+        showToast(`Exchanged 1 ${COLUMN_DEFS[colId].name} for 10 ${COLUMN_DEFS[targetColId].name}`);
+      });
+    }
+
+    /**
+     * Visual flight animation between two columns during exchange
+     */
+    function animateExchange(fromColId, toColId, callback) {
+      const fromEl = document.getElementById(`col-body-${fromColId}`);
+      const toEl = document.getElementById(`col-body-${toColId}`);
+      if (!fromEl || !toEl) {
+        callback();
+        return;
+      }
+
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+
+      const flyer = document.createElement('div');
+      flyer.className = 'exchange-flyer pv-counter';
+      flyer.style.background = COLUMN_DEFS[toColId].counterGradient;
+      flyer.style.fontSize = '11px';
+      flyer.textContent = COLUMN_DEFS[toColId].label;
+
+      const startX = fromRect.left + fromRect.width / 2 - 22;
+      const startY = fromRect.top + fromRect.height / 2 - 22;
+      const deltaX = (toRect.left + toRect.width / 2 - 22) - startX;
+      const deltaY = (toRect.top + toRect.height / 2 - 22) - startY;
+
+      flyer.style.left = `${startX}px`;
+      flyer.style.top = `${startY}px`;
+      document.body.appendChild(flyer);
+
+      requestAnimationFrame(() => {
+        flyer.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.25)`;
+        flyer.style.opacity = '0.2';
+      });
+
+      setTimeout(() => {
+        flyer.remove();
+        callback();
+      }, 360);
+    }
+
+    /**
+     * ============================================================================
+     * RANDOM GENERATOR & CLEAR BOARD
+     * ============================================================================
+     */
+    function generateRandomNumber() {
+      saveSnapshot();
+      Object.keys(state.counts).forEach(k => (state.counts[k] = 0));
+
+      let hasNonZero = false;
+      state.columns.forEach((colId, idx) => {
+        // Generate digits 0-9, ensuring at least one non-zero digit
+        let digit = Math.floor(Math.random() * 10);
+        if (idx === state.columns.length - 1 && !hasNonZero && digit === 0) {
+          digit = Math.floor(Math.random() * 9) + 1;
+        }
+        if (digit > 0) hasNonZero = true;
+        state.counts[colId] = digit;
+      });
+
+      playSound('exchange');
+      renderAll();
+    }
+
+    function clearBoard() {
+      const totalItems = state.columns.reduce((acc, col) => acc + state.counts[col], 0);
+      if (totalItems === 0) return;
+      saveSnapshot();
+      Object.keys(state.counts).forEach(k => (state.counts[k] = 0));
+      playSound('clear');
+      renderAll();
+      showToast('Chart cleared');
+    }
+
+    /**
+     * ============================================================================
+     * TOTAL & PARTITIONING CALCULATION (Floating-point safe)
+     * ============================================================================
+     */
+    function toggleShowTotal() {
+      state.showTotal = !state.showTotal;
+      document.getElementById('iconEyeOpen').classList.toggle('hidden', !state.showTotal);
+      document.getElementById('iconEyeClosed').classList.toggle('hidden', state.showTotal);
+      document.getElementById('labelToggleTotal').textContent = state.showTotal ? 'Hide Total' : 'Show Total';
+      renderAll();
+    }
+
+    function toggleExpandedForm() {
+      state.showExpanded = !state.showExpanded;
+      const container = document.getElementById('expandedFormContainer');
+      const btn = document.getElementById('btnToggleExpanded');
+      if (state.showExpanded) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+        btn.classList.add('bg-amber-100', 'border-amber-300', 'text-amber-900');
+      } else {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+        btn.classList.remove('bg-amber-100', 'border-amber-300', 'text-amber-900');
+      }
+      renderTotals();
+    }
+
+    function formatNumberPrecise(num, maxDecimals = 3) {
+      // Round cleanly to avoid JS float artifacts like 0.30000000000000004
+      const rounded = Number(Math.round(num + 'e' + maxDecimals) + 'e-' + maxDecimals);
+      return rounded.toLocaleString('en-GB', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals
+      });
+    }
+
+    function renderTotals() {
+      const totalEl = document.getElementById('totalDisplay');
+      const expandedEl = document.getElementById('expandedFormText');
+
+      if (!state.showTotal) {
+        totalEl.textContent = '• • • •';
+        totalEl.classList.add('text-slate-400');
+        expandedEl.textContent = '? + ? + ?';
+        return;
+      }
+
+      totalEl.classList.remove('text-slate-400');
+
+      let sum = 0;
+      const parts = [];
+
+      state.columns.forEach(colId => {
+        const count = state.counts[colId];
+        const mult = COLUMN_DEFS[colId].multiplier;
+        const partVal = Number(Math.round(count * mult + 'e4') + 'e-4');
+        sum = Number(Math.round(sum + partVal + 'e4') + 'e-4');
+        if (count > 0) {
+          parts.push(formatNumberPrecise(partVal, 3));
+        }
+      });
+
+      totalEl.textContent = formatNumberPrecise(sum, 3);
+      expandedEl.textContent = parts.length > 0 ? parts.join(' + ') : '0';
+    }
+
+    /**
+     * ============================================================================
+     * DRAG AND DROP HANDLERS (From Tray & Existing Items)
+     * ============================================================================
+     */
+    let dragPayload = null; // { source: 'tray' | 'board', colId: string }
+
+    function handleTrayDragStart(event, colId) {
+      dragPayload = { source: 'tray', colId };
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('text/plain', JSON.stringify(dragPayload));
+    }
+
+    function handleBoardItemDragStart(event, colId) {
+      event.stopPropagation();
+      dragPayload = { source: 'board', colId };
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', JSON.stringify(dragPayload));
+    }
+
+    function handleColumnDragOver(event, colId) {
+      event.preventDefault();
+      const body = document.getElementById(`col-body-${colId}`);
+      if (body) body.classList.add('column-drag-over');
+    }
+
+    function handleColumnDragLeave(event, colId) {
+      const body = document.getElementById(`col-body-${colId}`);
+      if (body) body.classList.remove('column-drag-over');
+    }
+
+    function handleColumnDrop(event, targetColId) {
+      event.preventDefault();
+      const body = document.getElementById(`col-body-${targetColId}`);
+      if (body) body.classList.remove('column-drag-over');
+
+      if (!dragPayload) return;
+
+      if (dragPayload.source === 'tray') {
+        // Add directly to the dropped column (allows flexible placement or matching column)
+        addItem(targetColId, 1);
+      } else if (dragPayload.source === 'board') {
+        if (dragPayload.colId !== targetColId) {
+          // Move 1 item between columns
+          if (state.counts[dragPayload.colId] > 0 && state.counts[targetColId] < MAX_ITEMS_PER_COL) {
+            saveSnapshot();
+            state.counts[dragPayload.colId] -= 1;
+            state.counts[targetColId] += 1;
+            playSound('add');
+            renderAll(targetColId);
+          }
+        }
+      }
+      dragPayload = null;
+    }
+
+    function handleTrashDragOver(event) {
+      event.preventDefault();
+      document.getElementById('trashDropZone').classList.add('trash-drag-over');
+    }
+
+    function handleTrashDragLeave(event) {
+      document.getElementById('trashDropZone').classList.remove('trash-drag-over');
+    }
+
+    function handleTrashDrop(event) {
+      event.preventDefault();
+      document.getElementById('trashDropZone').classList.remove('trash-drag-over');
+      if (dragPayload && dragPayload.source === 'board') {
+        removeItem(dragPayload.colId, 1);
+      }
+      dragPayload = null;
+    }
+
+    /**
+     * ============================================================================
+     * RENDERING THE CHART, COLUMNS, ITEMS & TRAY
+     * ============================================================================
+     */
+    function renderAll(animateColId = null) {
+      renderChart(animateColId);
+      renderTray();
+      renderTotals();
+    }
+
+    function renderChart(animateColId = null) {
+      const grid = document.getElementById('chartGrid');
+      grid.innerHTML = '';
+
+      state.columns.forEach((colId, idx) => {
+        const def = COLUMN_DEFS[colId];
+        const count = state.counts[colId];
+        const hasLeftCol = idx > 0;
+        const hasRightCol = idx < state.columns.length - 1;
+        const canExchangeUp = hasLeftCol && count >= 10;
+        const canExchangeDown = hasRightCol && count >= 1;
+
+        // Check if we need a Decimal Point pillar right BEFORE Tenths ('t')
+        if (colId === 't') {
+          const decimalPillar = document.createElement('div');
+          decimalPillar.className = 'w-8 sm:w-10 shrink-0 bg-slate-100/90 flex flex-col items-center justify-between py-3 border-x border-slate-300 relative';
+          decimalPillar.innerHTML = `
+            <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 rotate-180" style="writing-mode: vertical-rl;">
+              Decimal
+            </div>
+            <div class="w-5 h-5 rounded-full bg-slate-800 shadow-md my-auto"></div>
+            <div class="text-2xl font-black text-slate-800 leading-none pb-1">.</div>
+          `;
+          grid.appendChild(decimalPillar);
+        }
+
+        // Column Container
+        const colEl = document.createElement('div');
+        colEl.className = `flex-1 min-w-[145px] sm:min-w-[175px] flex flex-col justify-between transition-colors ${def.softBg}`;
+
+        // 1. Column Header
+        const headerHtml = `
+          <div class="${def.headerBg} text-white px-2 py-2.5 text-center shadow-xs">
+            <div class="text-xl sm:text-2xl font-black tracking-tight leading-none">${def.short}</div>
+            <div class="text-[11px] sm:text-xs font-semibold opacity-95 mt-1 truncate">${def.name}</div>
+          </div>
+        `;
+
+        // 2. Exchanging / Regrouping Action Strip
+        let exchangeStripHtml = `<div class="min-h-[38px] px-2 py-1.5 bg-white/80 border-b border-slate-200/80 flex items-center justify-center gap-1.5 flex-wrap">`;
+        if (canExchangeUp) {
+          exchangeStripHtml += `
+            <button
+              onclick="exchangeUp('${colId}')"
+              title="Group 10 ${def.name} into 1 ${COLUMN_DEFS[state.columns[idx - 1]].name}"
+              class="animate-gentle-bounce px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-[11px] shadow-sm border border-amber-500 flex items-center gap-1 transition cursor-pointer"
+            >
+              <span>← Exchange (10→1)</span>
+            </button>
+          `;
+        }
+        if (canExchangeDown) {
+          exchangeStripHtml += `
+            <button
+              onclick="exchangeDown('${colId}')"
+              title="Break apart 1 ${def.name} into 10 ${COLUMN_DEFS[state.columns[idx + 1]].name}"
+              class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] border border-slate-300 flex items-center gap-1 transition cursor-pointer"
+            >
+              <span>1→10 →</span>
+            </button>
+          `;
+        }
+        if (!canExchangeUp && !canExchangeDown) {
+          exchangeStripHtml += `<span class="text-[10px] font-semibold text-slate-400">Value: ${def.label}</span>`;
+        }
+        exchangeStripHtml += `</div>`;
+
+        // 3. Interactive Workspace Area (Counters arranged in 5-per-row 10-frame rhythm, or Base-10 blocks)
+        const bodyDiv = document.createElement('div');
+        bodyDiv.id = `col-body-${colId}`;
+        bodyDiv.className = 'flex-1 p-3 flex flex-col items-center justify-start cursor-pointer relative transition-all';
+        bodyDiv.setAttribute('ondragover', `handleColumnDragOver(event, '${colId}')`);
+        bodyDiv.setAttribute('ondragleave', `handleColumnDragLeave(event, '${colId}')`);
+        bodyDiv.setAttribute('ondrop', `handleColumnDrop(event, '${colId}')`);
+        bodyDiv.onclick = (e) => {
+          // Only add when clicking empty background of column, not on existing items
+          if (e.target === bodyDiv || e.target.dataset.gridContainer === 'true') {
+            addItem(colId, 1);
+          }
+        };
+
+        if (count === 0) {
+          bodyDiv.innerHTML = `
+            <div data-grid-container="true" class="flex-1 w-full flex flex-col items-center justify-center text-slate-300 pointer-events-none select-none py-8">
+              <div class="w-10 h-10 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-lg font-bold mb-1">+</div>
+              <span class="text-[11px] font-semibold">Tap to add</span>
+            </div>
+          `;
+        } else if (state.mode === 'counters') {
+          // Group counters in rows of 5 (10-frame subitizing structure used in White Rose Maths)
+          const wrapper = document.createElement('div');
+          wrapper.dataset.gridContainer = 'true';
+          wrapper.className = 'w-full flex flex-col items-center gap-2.5 pt-1';
+
+          for (let start = 0; start < count; start += 5) {
+            const row = document.createElement('div');
+            row.dataset.gridContainer = 'true';
+            // Add extra gap after 10 items to visually separate groups of ten!
+            const isEndOfTen = (start + 5) % 10 === 0 && (start + 5) < count;
+            row.className = `flex flex-wrap items-center justify-center gap-1.5 ${isEndOfTen ? 'pb-2.5 mb-1 border-b-2 border-dashed border-slate-300/80 w-full' : ''}`;
+
+            const end = Math.min(start + 5, count);
+            for (let i = start; i < end; i++) {
+              const disc = document.createElement('div');
+              const isNewest = animateColId === colId && i === count - 1;
+              disc.className = `pv-counter ${isNewest ? 'animate-pop-in' : ''}`;
+              disc.style.background = def.counterGradient;
+              // Adjust font size for longer labels like 1,000,000 or 0.001
+              if (def.label.length >= 7) {
+                disc.style.fontSize = '8.5px';
+              } else if (def.label.length >= 5) {
+                disc.style.fontSize = '10px';
+              } else if (def.label.length >= 4) {
+                disc.style.fontSize = '11.5px';
+              } else {
+                disc.style.fontSize = '13.5px';
+              }
+              disc.textContent = def.label;
+              disc.title = `Click to remove 1 ${def.name} (or drag to move/delete)`;
+              disc.draggable = true;
+              disc.ondragstart = (e) => handleBoardItemDragStart(e, colId);
+              disc.onclick = (e) => {
+                e.stopPropagation();
+                removeItem(colId, 1);
+              };
+              row.appendChild(disc);
+            }
+            wrapper.appendChild(row);
+          }
+          bodyDiv.appendChild(wrapper);
+        } else {
+          // Base-10 Dienes Blocks Rendering
+          const wrapper = document.createElement('div');
+          wrapper.dataset.gridContainer = 'true';
+          wrapper.className = 'w-full flex flex-wrap items-end justify-center gap-2 pt-1';
+
+          for (let i = 0; i < count; i++) {
+            const itemWrap = document.createElement('div');
+            const isNewest = animateColId === colId && i === count - 1;
+            itemWrap.className = `b10-item ${isNewest ? 'animate-pop-in' : ''}`;
+            itemWrap.innerHTML = getBase10SVG(colId, false);
+            itemWrap.title = `Click to remove 1 ${def.name} block (or drag to move/delete)`;
+            itemWrap.draggable = true;
+            itemWrap.ondragstart = (e) => handleBoardItemDragStart(e, colId);
+            itemWrap.onclick = (e) => {
+              e.stopPropagation();
+              removeItem(colId, 1);
+            };
+            wrapper.appendChild(itemWrap);
+          }
+          bodyDiv.appendChild(wrapper);
+        }
+
+        // 4. Column Footer: Digit Badge + Quick [- / +] Controls
+        const digitDisplay = state.showTotal ? count : '?';
+        const footerHtml = `
+          <div class="p-2.5 bg-white border-t border-slate-200 flex items-center justify-between gap-1.5">
+            <button
+              onclick="removeItem('${colId}', 1)"
+              ${count === 0 ? 'disabled' : ''}
+              aria-label="Remove one ${def.name}"
+              class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 hover:text-rose-700 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-black text-lg flex items-center justify-center border border-slate-200 transition active:scale-90 cursor-pointer"
+            >
+              −
+            </button>
+
+            <div class="px-3 py-1 rounded-xl border ${def.badgeBg} font-black text-lg sm:text-xl tabular-nums min-w-[44px] text-center shadow-2xs">
+              ${digitDisplay}
+            </div>
+
+            <button
+              onclick="addItem('${colId}', 1)"
+              aria-label="Add one ${def.name}"
+              class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-700 font-black text-lg flex items-center justify-center border border-slate-200 transition active:scale-90 cursor-pointer"
+            >
+              +
+            </button>
+          </div>
+        `;
+
+        colEl.innerHTML = headerHtml + exchangeStripHtml;
+        colEl.appendChild(bodyDiv);
+        const footerContainer = document.createElement('div');
+        footerContainer.innerHTML = footerHtml;
+        colEl.appendChild(footerContainer.firstElementChild);
+
+        grid.appendChild(colEl);
+      });
+    }
+
+    /**
+     * Render the bottom palette of draggable/clickable manipulatives matching active columns
+     */
+    function renderTray() {
+      const tray = document.getElementById('manipulativeTray');
+      tray.innerHTML = '';
+
+      state.columns.forEach(colId => {
+        const def = COLUMN_DEFS[colId];
+        const trayBtn = document.createElement('div');
+        trayBtn.className = 'flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 cursor-grab active:cursor-grabbing transition';
+        trayBtn.draggable = true;
+        trayBtn.ondragstart = (e) => handleTrayDragStart(e, colId);
+        trayBtn.onclick = () => addItem(colId, 1);
+        trayBtn.title = `Click or drag to add ${def.label} (${def.name})`;
+
+        if (state.mode === 'counters') {
+          const disc = document.createElement('div');
+          disc.className = 'pv-counter pointer-events-none';
+          disc.style.width = '40px';
+          disc.style.height = '40px';
+          disc.style.background = def.counterGradient;
+          disc.style.fontSize = def.label.length >= 6 ? '8px' : def.label.length >= 4 ? '10px' : '12.5px';
+          disc.textContent = def.label;
+          trayBtn.appendChild(disc);
+        } else {
+          const svgWrap = document.createElement('div');
+          svgWrap.className = 'h-[54px] flex items-center justify-center pointer-events-none';
+          svgWrap.innerHTML = getBase10SVG(colId, true);
+          trayBtn.appendChild(svgWrap);
+        }
+
+        const caption = document.createElement('span');
+        caption.className = 'text-[11px] font-bold text-slate-600';
+        caption.textContent = def.short;
+        trayBtn.appendChild(caption);
+
+        tray.appendChild(trayBtn);
+      });
+    }
+
+    /**
+     * ============================================================================
+     * TOAST MESSAGE HELPER
+     * ============================================================================
+     */
+    let toastTimer = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toastBanner');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2400);
+    }
+
+    // Initialize App on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+    });
+  </script>
+</body>
+</html>
